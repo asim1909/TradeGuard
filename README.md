@@ -288,6 +288,3 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ---
 
-## 👨‍💻 Author & Acknowledgments
-
-Developed by **Senior Financial Software Engineers & Data Engineers** as an enterprise portfolio application showcasing production-grade financial engineering, trade control automation, SQL reconciliation patterns, and modern web analytics.
