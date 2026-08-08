@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradeGuard | Trade Reconciliation & Control Automation Engine</title>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast hidden">
+        <span id="toast-icon">⚡</span>
+        <span id="toast-message">Notification Message</span>
+    </div>
+
+    <!-- Main App Container -->
+    <div class="app-container">
+        
+        <!-- Header Control Navigation Bar -->
+        <header class="navbar">
+            <div class="brand">
+                <div class="logo-badge">TG</div>
+                <div class="brand-info">
+                    <h1>TradeGuard</h1>
+                    <span class="subtitle">Trade Reconciliation & Control Engine</span>
+                </div>
+            </div>
+
+            <div class="system-status">
+                <div class="status-indicator">
+                    <span class="pulse-dot"></span>
+                    <span id="status-text">Connected to SQLite Engine</span>
+                </div>
+                <div class="run-tag">
+                    <span class="tag-label">Active Run:</span>
+                    <span id="header-run-id" class="mono">REC_20260805_214959</span>
+                </div>
+            </div>
+
+            <div class="action-toolbar">
+                <button id="btn-generate" class="btn btn-secondary" onclick="triggerGenerateData()">
+                    <span class="btn-icon">⚡</span> Generate Data
+                </button>
+                <button id="btn-reconcile" class="btn btn-primary" onclick="triggerReconciliation()">
+                    <span class="btn-icon">🔄</span> Reconcile
+                </button>
+                <button id="btn-simulate" class="btn btn-secondary" onclick="triggerSimulateHistory()">
+                    <span class="btn-icon">📈</span> 30-Day History
+                </button>
+                <button id="btn-powerbi" class="btn btn-accent" onclick="triggerExportPowerBI()">
+                    <span class="btn-icon">📊</span> Power BI Export
+                </button>
+            </div>
+        </header>
+
+        <!-- KPI Executive Summary Cards Banner -->
+        <section class="kpi-banner">
+            <div class="kpi-card match-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">Match Percentage</span>
+                    <span class="kpi-badge match-badge" id="kpi-match-status">HEALTHY</span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-value" id="kpi-match-pct">92.70%</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="kpi-match-bar" style="width: 92.7%;"></div>
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">Front Office Feed</span>
+                    <span class="kpi-icon">📈</span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-value mono" id="kpi-fo-count">1,000</span>
+                    <span class="kpi-unit">trades</span>
+                </div>
+                <div class="kpi-footer">Executing Desks Population</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">Back Office Feed</span>
+                    <span class="kpi-icon">🏦</span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-value mono" id="kpi-bo-count">998</span>
+                    <span class="kpi-unit">trades</span>
+                </div>
+                <div class="kpi-footer">Settlement & Ops Staging</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">Total Breaks</span>
+                    <span class="kpi-icon">⚠️</span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-value mono text-warning" id="kpi-breaks-count">89</span>
+                    <span class="kpi-unit">exceptions</span>
+                </div>
+                <div class="kpi-footer" id="kpi-matched-count">927 Trades Matched</div>
+            </div>
+
+            <div class="kpi-card critical-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">Critical Risk Items</span>
+                    <span class="kpi-badge critical-badge">HIGH ALERT</span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-value mono text-danger" id="kpi-critical-count">30</span>
+                    <span class="kpi-unit">critical</span>
+                </div>
+                <div class="kpi-footer text-danger-subtle">Missing & Unexpected Trades</div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">Execution Speed</span>
+                    <span class="kpi-icon">⚡</span>
+                </div>
+                <div class="kpi-value-row">
+                    <span class="kpi-value mono" id="kpi-exec-time">0.0158s</span>
+                </div>
+                <div class="kpi-footer">SQL Engine Latency</div>
+            </div>
+        </section>
+
+        <!-- Navigation Tabs Bar -->
+        <nav class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('executive-overview', this)">
+                <span class="tab-icon">📊</span> Executive Overview
+            </button>
+            <button class="tab-btn" onclick="switchTab('break-explorer', this)">
+                <span class="tab-icon">🔍</span> Exception Explorer
+            </button>
+            <button class="tab-btn" onclick="switchTab('trade-population', this)">
+                <span class="tab-icon">📑</span> Trade Population
+            </button>
+            <button class="tab-btn" onclick="switchTab('risk-monitoring', this)">
+                <span class="tab-icon">🛡️</span> Control & Risk
+            </button>
+            <button class="tab-btn" onclick="switchTab('reports-center', this)">
+                <span class="tab-icon">📥</span> Reports & Exports
+            </button>
+        </nav>
+
+        <!-- Tab Content View: Executive Overview -->
+        <main id="view-executive-overview" class="tab-view active">
+            <div class="grid-2col">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>Historical Match Rate % Trend (30 Days)</h2>
+                        <span class="panel-tag">Reconciliation Quality</span>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="chart-match-trend"></canvas>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>Break Severity Distribution</h2>
+                        <span class="panel-tag">Risk Spectrum</span>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="chart-severity-dist"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-2col mt-4">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>Break Counts by Exception Category</h2>
+                        <span class="panel-tag">Discrepancy Breakdown</span>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="chart-break-types"></canvas>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2>Exception Exposure by Trading Desk</h2>
+                        <span class="panel-tag">Desk Controls</span>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="chart-desk-exposure"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Tab Content View: Exception Explorer -->
+        <main id="view-break-explorer" class="tab-view hidden">
+            <div class="panel">
+                <div class="filter-toolbar">
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="search-breaks" placeholder="Search Trade ID, Trader, Symbol..." oninput="filterBreaksTable()">
+                    </div>
+
+                    <div class="filter-group">
+                        <label>Severity:</label>
+                        <select id="filter-severity" onchange="filterBreaksTable()">
+                            <option value="ALL">All Severities</option>
+                            <option value="CRITICAL">Critical</option>
+                            <option value="HIGH">High</option>
+                            <option value="MEDIUM">Medium</option>
+                            <option value="LOW">Low</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label>Break Type:</label>
+                        <select id="filter-break-type" onchange="filterBreaksTable()">
+                            <option value="ALL">All Break Types</option>
+                            <option value="Missing Trade">Missing Trade</option>
+                            <option value="Unexpected Trade">Unexpected Trade</option>
+                            <option value="Price Mismatch">Price Mismatch</option>
+                            <option value="Quantity Mismatch">Quantity Mismatch</option>
+                            <option value="Currency Mismatch">Currency Mismatch</option>
+                            <option value="Status Mismatch">Status Mismatch</option>
+                            <option value="Trade Date Mismatch">Trade Date Mismatch</option>
+                            <option value="Settlement Date Mismatch">Settlement Date Mismatch</option>
+                            <option value="Duplicate Trade">Duplicate Trade</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="datatable" id="table-breaks">
+                        <thead>
+                            <tr>
+                                <th>Trade ID</th>
+                                <th>Severity</th>
+                                <th>Break Type</th>
+                                <th>Expected Value</th>
+                                <th>Actual Value</th>
+                                <th>Desk</th>
+                                <th>Counterparty</th>
+                                <th>Asset Class</th>
+                                <th>Detected At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-breaks">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <!-- Tab Content View: Trade Population -->
+        <main id="view-trade-population" class="tab-view hidden">
+            <div class="panel">
+                <div class="filter-toolbar">
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="search-trades" placeholder="Search Trade ID, Counterparty, Symbol..." oninput="filterTradesTable()">
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="datatable" id="table-trades">
+                        <thead>
+                            <tr>
+                                <th>Trade ID</th>
+                                <th>Trade Date</th>
+                                <th>Settlement Date</th>
+                                <th>Trader</th>
+                                <th>Desk</th>
+                                <th>Portfolio</th>
+                                <th>Counterparty</th>
+                                <th>Asset Class</th>
+                                <th>Buy/Sell</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Currency</th>
+                                <th>Notional Exposure ($)</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-trades">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <!-- Tab Content View: Risk & Control -->
+        <main id="view-risk-monitoring" class="tab-view hidden">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Desk Risk & Exception Rates Summary</h2>
+                    <span class="panel-tag">Product Control Metrics</span>
+                </div>
+
+                <div class="table-responsive mt-3">
+                    <table class="datatable" id="table-desk-risk">
+                        <thead>
+                            <tr>
+                                <th>Desk</th>
+                                <th>Total Trades</th>
+                                <th>Total Notional ($)</th>
+                                <th>Total Breaks</th>
+                                <th>Critical Breaks</th>
+                                <th>Exception Rate (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-desk-risk">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <!-- Tab Content View: Reports & Downloads -->
+        <main id="view-reports-center" class="tab-view hidden">
+            <div class="reports-grid" id="reports-cards-container">
+                <!-- Dynamically populated report file cards -->
+            </div>
+        </main>
+
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
