@@ -127,10 +127,11 @@ class DatabaseManager:
                     logger.info("Updating reconciliation_summary table schema...")
                     conn.execute("DROP TABLE reconciliation_summary")
 
-            if self.table_exists("reconciliation_breaks"):
-                cols = [row[1] for row in self.execute_query("PRAGMA table_info(reconciliation_breaks)")]
-                if "Run_ID" not in cols:
-                    logger.info("Updating reconciliation_breaks table schema...")
+            tables = [row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+            if "reconciliation_breaks" in tables:
+                cols = [row[1] for row in conn.execute("PRAGMA table_info(reconciliation_breaks)")]
+                if "Run_ID" not in cols or "Resolution_Status" not in cols:
+                    logger.info("Updating reconciliation_breaks table schema for resolution tracking...")
                     conn.execute("DROP TABLE reconciliation_breaks")
 
             with open(self.schema_path, "r", encoding="utf-8") as f:

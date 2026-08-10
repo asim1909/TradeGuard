@@ -127,12 +127,14 @@ def get_summary():
 
 @app.route("/api/breaks", methods=["GET"])
 def get_breaks():
-    """Returns reconciliation breaks enriched with trade metadata and severity tags."""
+    """Returns reconciliation breaks enriched with trade metadata, severity tags, and resolution status."""
     db = get_db()
     try:
         query = """
             SELECT 
-                b.ID, b.Run_ID, b.Trade_ID, b.Break_Type, b.Expected_Value, b.Actual_Value, b.Severity, b.Detected_At,
+                b.ID, b.Run_ID, b.Trade_ID, b.Break_Type, b.Expected_Value, b.Actual_Value, b.Severity,
+                COALESCE(b.Resolution_Status, 'UNRESOLVED') AS Resolution_Status,
+                b.Resolution_Reason, b.Resolved_By, b.Resolved_At, b.Detected_At,
                 COALESCE(f.Trader, bo.Trader, 'N/A') AS Trader,
                 COALESCE(f.Desk, bo.Desk, 'Unassigned') AS Desk,
                 COALESCE(f.Portfolio, bo.Portfolio, 'Unassigned') AS Portfolio,
@@ -150,6 +152,57 @@ def get_breaks():
         return jsonify({"breaks": rows_to_dicts(rows)})
     except Exception as e:
         logger.error(f"Error fetching breaks: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        db.disconnect()
+
+
+@app.route("/api/breaks/resolve", methods=["POST"])
+def resolve_break_api():
+    """Updates resolution status of a break and logs audit trail record."""
+    db = get_db()
+    try:
+        data = request.get_json() or {}
+        break_id = data.get("break_id")
+        new_status = (data.get("status") or "RESOLVED").upper()
+        reason = data.get("reason", "Approved by Product Control")
+        user = data.get("user", "Product Controller")
+        notes = data.get("notes", "")
+
+        if not break_id:
+            return jsonify({"status": "error", "message": "Missing break_id"}), 400
+
+        valid_statuses = ["UNRESOLVED", "RESOLVED", "ESCALATED", "UNDER_REVIEW"]
+        if new_status not in valid_statuses:
+            return jsonify({"status": "error", "message": f"Invalid status. Must be one of {valid_statuses}"}), 400
+
+        current = db.execute_select("SELECT Trade_ID, Resolution_Status FROM reconciliation_breaks WHERE ID = ?", (break_id,))
+        if not current:
+            return jsonify({"status": "error", "message": f"Break ID {break_id} not found"}), 404
+
+        trade_id = current[0]["Trade_ID"] if hasattr(current[0], "keys") else current[0][0]
+        prev_status = (current[0]["Resolution_Status"] if hasattr(current[0], "keys") else current[0][1]) or "UNRESOLVED"
+
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        db.execute_query(
+            "UPDATE reconciliation_breaks SET Resolution_Status = ?, Resolution_Reason = ?, Resolved_By = ?, Resolved_At = ? WHERE ID = ?",
+            (new_status, reason, user, now_str, break_id)
+        )
+
+        db.execute_query(
+            "INSERT INTO break_resolutions_history (Break_ID, Trade_ID, Previous_Status, New_Status, Reason, Action_By, Notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (break_id, trade_id, prev_status, new_status, reason, user, notes)
+        )
+
+        return jsonify({
+            "status": "success",
+            "message": f"Break #{break_id} for Trade {trade_id} marked as {new_status}.",
+            "break_id": break_id,
+            "new_status": new_status,
+            "resolved_at": now_str
+        })
+    except Exception as e:
+        logger.error(f"Error resolving break: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
     finally:
         db.disconnect()

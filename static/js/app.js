@@ -233,11 +233,12 @@ function populateBreaksTable(breaks) {
     tbody.innerHTML = "";
 
     if (!breaks || breaks.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#64748b; padding:2rem;">No reconciliation breaks found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#64748b; padding:2rem;">No reconciliation breaks found.</td></tr>`;
         return;
     }
 
     breaks.forEach(b => {
+        const resStatus = b.Resolution_Status || 'UNRESOLVED';
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td class="mono font-semibold" style="color:#00f2fe;">${b.Trade_ID}</td>
@@ -248,7 +249,12 @@ function populateBreaksTable(breaks) {
             <td>${b.Desk}</td>
             <td>${b.Counterparty}</td>
             <td>${b.Asset_Class}</td>
-            <td class="mono text-muted">${(b.Detected_At || '').substring(0, 19)}</td>
+            <td><span class="res-pill res-${resStatus}">${resStatus.replace('_', ' ')}</span></td>
+            <td>
+                <button class="btn-action-resolve" onclick="openResolveModal(${b.ID})">
+                    ${resStatus === 'UNRESOLVED' ? '⚡ Resolve' : '✏️ Edit'}
+                </button>
+            </td>
         `;
         tbody.appendChild(tr);
     });
@@ -259,6 +265,7 @@ function filterBreaksTable() {
     const searchVal = document.getElementById("search-breaks").value.toLowerCase();
     const sevVal = document.getElementById("filter-severity").value;
     const typeVal = document.getElementById("filter-break-type").value;
+    const resVal = document.getElementById("filter-resolution") ? document.getElementById("filter-resolution").value : "ALL";
 
     const filtered = allBreaksData.filter(b => {
         const matchesSearch = (b.Trade_ID || '').toLowerCase().includes(searchVal) ||
@@ -268,11 +275,67 @@ function filterBreaksTable() {
         
         const matchesSev = (sevVal === "ALL") || (b.Severity === sevVal);
         const matchesType = (typeVal === "ALL") || (b.Break_Type === typeVal);
+        const matchesRes = (resVal === "ALL") || ((b.Resolution_Status || 'UNRESOLVED') === resVal);
 
-        return matchesSearch && matchesSev && matchesType;
+        return matchesSearch && matchesSev && matchesType && matchesRes;
     });
 
     populateBreaksTable(filtered);
+}
+
+// Resolution Modal Event Handlers
+function openResolveModal(breakId) {
+    const breakItem = allBreaksData.find(b => b.ID === breakId);
+    if (!breakItem) return;
+
+    document.getElementById("modal-break-id").value = breakItem.ID;
+    document.getElementById("modal-trade-id").textContent = breakItem.Trade_ID;
+    document.getElementById("modal-break-type").textContent = breakItem.Break_Type;
+    document.getElementById("modal-exp-act").textContent = `${breakItem.Expected_Value || '-'} / ${breakItem.Actual_Value || '-'}`;
+    document.getElementById("modal-desk-cp").textContent = `${breakItem.Desk} / ${breakItem.Counterparty}`;
+    
+    document.getElementById("modal-status").value = breakItem.Resolution_Status || "RESOLVED";
+    document.getElementById("modal-notes").value = breakItem.Resolution_Reason || "";
+
+    const modal = document.getElementById("modal-resolve");
+    modal.classList.remove("hidden");
+}
+
+function closeResolveModal() {
+    const modal = document.getElementById("modal-resolve");
+    modal.classList.add("hidden");
+}
+
+function onReasonSelectChange(selectElem) {
+    if (selectElem.value !== "Custom Note") {
+        document.getElementById("modal-notes").value = selectElem.value;
+    }
+}
+
+async function handleResolveSubmit(event) {
+    event.preventDefault();
+    const breakId = parseInt(document.getElementById("modal-break-id").value);
+    const status = document.getElementById("modal-status").value;
+    const reason = document.getElementById("modal-notes").value || document.getElementById("modal-reason-select").value;
+    const user = document.getElementById("modal-user").value || "Product Controller";
+
+    try {
+        const res = await fetch("/api/breaks/resolve", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ break_id: breakId, status, reason, user })
+        }).then(r => r.json());
+
+        if (res.status === "success") {
+            showToast(res.message, "✅");
+            closeResolveModal();
+            fetchDashboardData();
+        } else {
+            showToast("Failed to update break: " + res.message, "❌");
+        }
+    } catch (err) {
+        showToast("Error updating break status: " + err.message, "❌");
+    }
 }
 
 // Populate Trade Population Table

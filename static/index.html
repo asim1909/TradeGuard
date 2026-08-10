@@ -236,6 +236,17 @@
                             <option value="Duplicate Trade">Duplicate Trade</option>
                         </select>
                     </div>
+
+                    <div class="filter-group">
+                        <label>Status:</label>
+                        <select id="filter-resolution" onchange="filterBreaksTable()">
+                            <option value="ALL">All Statuses</option>
+                            <option value="UNRESOLVED">Unresolved</option>
+                            <option value="RESOLVED">Resolved</option>
+                            <option value="ESCALATED">Escalated</option>
+                            <option value="UNDER_REVIEW">Under Review</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="table-responsive">
@@ -250,7 +261,8 @@
                                 <th>Desk</th>
                                 <th>Counterparty</th>
                                 <th>Asset Class</th>
-                                <th>Detected At</th>
+                                <th>Resolution Status</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody id="tbody-breaks">
@@ -334,6 +346,65 @@
             </div>
         </main>
 
+    </div>
+
+    <!-- Break Resolution Modal Dialog -->
+    <div id="modal-resolve" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>🛡️ Resolve Reconciliation Break</h2>
+                <button class="modal-close" onclick="closeResolveModal()">✕</button>
+            </div>
+            <form id="form-resolve" onsubmit="handleResolveSubmit(event)">
+                <input type="hidden" id="modal-break-id">
+                
+                <div class="modal-body">
+                    <div class="modal-info-box">
+                        <div><strong>Trade ID:</strong> <span id="modal-trade-id" class="mono" style="color:#00f2fe;">TRD_100001</span></div>
+                        <div><strong>Break Type:</strong> <span id="modal-break-type">Price Mismatch</span></div>
+                        <div><strong>Expected / Actual:</strong> <span id="modal-exp-act" class="mono">150.00 / 152.50</span></div>
+                        <div><strong>Desk / Counterparty:</strong> <span id="modal-desk-cp">Rates / Goldman Sachs</span></div>
+                    </div>
+
+                    <div class="form-group mt-3">
+                        <label>Resolution Action Status:</label>
+                        <select id="modal-status" required>
+                            <option value="RESOLVED">✅ RESOLVED - Exception Cleared</option>
+                            <option value="ESCALATED">⚠️ ESCALATED - Escalate to Desk Supervisor</option>
+                            <option value="UNDER_REVIEW">🔍 UNDER_REVIEW - Pending Operations Audit</option>
+                            <option value="UNRESOLVED">❌ UNRESOLVED - Re-open Exception</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group mt-3">
+                        <label>Standard Financial Resolution Reason:</label>
+                        <select id="modal-reason-select" onchange="onReasonSelectChange(this)">
+                            <option value="Price variance approved by Trading Desk">Price variance approved by Trading Desk</option>
+                            <option value="Counterparty booking error confirmed">Counterparty booking error confirmed</option>
+                            <option value="Trade fee / commission adjustment">Trade fee / commission adjustment</option>
+                            <option value="System booking latency delay">System booking latency delay</option>
+                            <option value="Duplicate booking voided in Back Office">Duplicate booking voided in Back Office</option>
+                            <option value="Custom Note">Other / Custom Note</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group mt-3">
+                        <label>Controller Audit Notes / Reason Details:</label>
+                        <textarea id="modal-notes" rows="2" placeholder="Enter audit resolution comments..."></textarea>
+                    </div>
+
+                    <div class="form-group mt-3">
+                        <label>Controller Name / Role:</label>
+                        <input type="text" id="modal-user" value="Product Controller" required>
+                    </div>
+                </div>
+
+                <div class="modal-footer mt-4">
+                    <button type="button" class="btn btn-secondary" onclick="closeResolveModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Resolution</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script src="/static/js/app.js"></script>

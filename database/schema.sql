@@ -52,6 +52,10 @@ CREATE TABLE IF NOT EXISTS reconciliation_breaks (
     Expected_Value TEXT,
     Actual_Value TEXT,
     Severity TEXT DEFAULT 'MEDIUM',
+    Resolution_Status TEXT DEFAULT 'UNRESOLVED',
+    Resolution_Reason TEXT,
+    Resolved_By TEXT,
+    Resolved_At TIMESTAMP,
     Detected_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (Run_ID) REFERENCES reconciliation_summary(Run_ID)
 );
@@ -78,6 +82,20 @@ CREATE TABLE IF NOT EXISTS reconciliation_summary (
     Low_Breaks INTEGER NOT NULL,
     Match_Percentage REAL NOT NULL,
     Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. Break Resolutions History Table (Immutable Audit Log for Product Control)
+CREATE TABLE IF NOT EXISTS break_resolutions_history (
+    ID INTEGER PRIMARY KEY AUTOINCREMENT,
+    Break_ID INTEGER NOT NULL,
+    Trade_ID TEXT NOT NULL,
+    Previous_Status TEXT NOT NULL,
+    New_Status TEXT NOT NULL,
+    Reason TEXT NOT NULL,
+    Action_By TEXT NOT NULL,
+    Notes TEXT,
+    Created_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (Break_ID) REFERENCES reconciliation_breaks(ID)
 );
 
 -- Indexes for Front Office Trades
