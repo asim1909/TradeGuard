@@ -13,7 +13,8 @@ from typing import Any, Dict, List
 from flask import Flask, jsonify, request, send_from_directory
 
 from config import (
-    CSV_REPORTS_DIR, DEFAULT_DB_PATH, EXCEL_REPORTS_DIR, JSON_REPORTS_DIR,
+    CSV_REPORTS_DIR, DEFAULT_BREAK_RATE, DEFAULT_DB_PATH, DEFAULT_NUM_TRADES,
+    DEFAULT_RECONCILE_THRESHOLD, EXCEL_REPORTS_DIR, JSON_REPORTS_DIR,
     POWERBI_REPORTS_DIR, PROJECT_ROOT, REPORTS_DIR,
 )
 from src.database.database_manager import DatabaseManager
@@ -279,16 +280,27 @@ def get_risk_summary():
         db.disconnect()
 
 
+@app.route("/api/config", methods=["GET"])
+def get_config_api():
+    """Returns default system configuration parameters."""
+    return jsonify({
+        "default_num_trades": DEFAULT_NUM_TRADES,
+        "default_break_rate": DEFAULT_BREAK_RATE,
+        "default_reconcile_threshold": DEFAULT_RECONCILE_THRESHOLD
+    })
+
+
 @app.route("/api/generate-data", methods=["POST"])
 def generate_data_api():
-    """Triggers synthetic trade data generation and ingests feeds into SQLite staging tables."""
+    """Triggers trade data generation and ingests feeds into SQLite staging tables."""
     db = get_db()
     try:
         data = request.get_json() or {}
-        count = int(data.get("count", 1000))
+        count = int(data.get("count", DEFAULT_NUM_TRADES))
         seed = int(data.get("seed", 42))
+        break_rate = float(data.get("break_rate", DEFAULT_BREAK_RATE))
 
-        generator = DataGenerator(num_trades=count, random_seed=seed)
+        generator = DataGenerator(num_trades=count, random_seed=seed, break_rate=break_rate)
         fo_df, bo_df, stats = generator.run()
 
         conn = db.connect()
@@ -297,7 +309,7 @@ def generate_data_api():
 
         return jsonify({
             "status": "success",
-            "message": f"Successfully generated and loaded {len(fo_df)} FO trades and {len(bo_df)} BO trades.",
+            "message": f"Successfully generated {len(fo_df)} FO and {len(bo_df)} BO trades (Break Rate: {break_rate*100:.1f}%).",
             "stats": stats,
         })
     except Exception as e:
@@ -309,14 +321,17 @@ def generate_data_api():
 
 @app.route("/api/reconcile", methods=["POST"])
 def reconcile_api():
-    """Triggers the SQL reconciliation engine and updates database audit tables."""
+    """Triggers the SQL reconciliation engine with dynamic price tolerance threshold."""
     db = get_db()
     try:
-        engine = ReconciliationEngine(db_manager=db, threshold=0.01)
+        data = request.get_json() or {}
+        threshold = float(data.get("threshold", DEFAULT_RECONCILE_THRESHOLD))
+
+        engine = ReconciliationEngine(db_manager=db, threshold=threshold)
         metrics = engine.run()
         return jsonify({
             "status": "success",
-            "message": f"Reconciliation completed in {metrics['Execution_Time']}s with Match Rate: {metrics['Match_Percentage']}%.",
+            "message": f"Reconciliation (Tolerance: ${threshold:.2f}) completed in {metrics['Execution_Time']}s with Match Rate: {metrics['Match_Percentage']}%.",
             "metrics": metrics,
         })
     except Exception as e:

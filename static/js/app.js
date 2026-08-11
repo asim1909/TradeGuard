@@ -431,12 +431,17 @@ function populateReportsCards(reports) {
 
 // Action Handlers
 async function triggerGenerateData() {
-    showToast("Generating synthetic trade feeds...", "⚡");
+    const countInput = document.getElementById("cfg-count");
+    const breakRateInput = document.getElementById("cfg-break-rate");
+    const count = countInput ? parseInt(countInput.value) || 1000 : 1000;
+    const breakRate = breakRateInput ? parseFloat(breakRateInput.value) / 100.0 : 0.04;
+
+    showToast(`Generating ${count.toLocaleString()} trade feeds (Break Rate: ${(breakRate*100).toFixed(1)}%)...`, "⚡");
     try {
         const res = await fetch("/api/generate-data", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ count: 1000, seed: 42 })
+            body: JSON.stringify({ count: count, seed: 42, break_rate: breakRate })
         }).then(r => r.json());
         
         showToast(res.message, "✅");
@@ -447,9 +452,17 @@ async function triggerGenerateData() {
 }
 
 async function triggerReconciliation() {
-    showToast("Executing SQL trade reconciliation engine...", "🔄");
+    const thresholdInput = document.getElementById("cfg-threshold");
+    const threshold = thresholdInput ? parseFloat(thresholdInput.value) || 0.01 : 0.01;
+
+    showToast(`Executing SQL trade reconciliation engine (Tolerance: $${threshold.toFixed(2)})...`, "🔄");
     try {
-        const res = await fetch("/api/reconcile", { method: "POST" }).then(r => r.json());
+        const res = await fetch("/api/reconcile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ threshold: threshold })
+        }).then(r => r.json());
+        
         showToast(res.message, "✅");
         fetchDashboardData();
     } catch (err) {

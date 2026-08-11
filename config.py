@@ -66,6 +66,7 @@ LOG_BACKUP_COUNT: int = 5
 DEFAULT_NUM_TRADES: int = 1000
 DEFAULT_RANDOM_SEED: int = 42
 DEFAULT_BREAK_RATE: float = 0.04  # ~3-5% target break ratio
+DEFAULT_RECONCILE_THRESHOLD: float = 0.01  # $0.01 price variance tolerance threshold
 
 # Generator Domain Value Lists
 TRADERS: List[str] = [

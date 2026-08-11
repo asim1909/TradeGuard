@@ -44,6 +44,21 @@
                 </div>
             </div>
 
+            <div class="engine-settings-bar">
+                <div class="setting-field">
+                    <label for="cfg-threshold">Tolerance ($):</label>
+                    <input type="number" id="cfg-threshold" value="0.01" step="0.01" min="0.00" max="100.00" title="Price variance matching tolerance ($)">
+                </div>
+                <div class="setting-field">
+                    <label for="cfg-count">Feed Count:</label>
+                    <input type="number" id="cfg-count" value="1000" step="100" min="10" max="50000" title="Synthetic feed trade population">
+                </div>
+                <div class="setting-field">
+                    <label for="cfg-break-rate">Break Rate (%):</label>
+                    <input type="number" id="cfg-break-rate" value="4.0" step="0.5" min="0.0" max="50.0" title="Target break injection rate (%)">
+                </div>
+            </div>
+
             <div class="action-toolbar">
                 <button id="btn-generate" class="btn btn-secondary" onclick="triggerGenerateData()">
                     <span class="btn-icon">⚡</span> Generate Data

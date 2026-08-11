@@ -710,3 +710,45 @@ body {
     gap: 0.75rem;
 }
 
+/* Engine Controls Settings Bar */
+.engine-settings-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 0.4rem 0.85rem;
+}
+
+.setting-field {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.setting-field label {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.setting-field input {
+    background: rgba(11, 15, 25, 0.8);
+    border: 1px solid var(--border-color);
+    color: var(--accent-cyan);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    width: 75px;
+    outline: none;
+}
+
+.setting-field input:focus {
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 8px rgba(0, 242, 254, 0.3);
+}
+
