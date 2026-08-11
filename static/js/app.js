@@ -260,6 +260,8 @@ function populateBreaksTable(breaks) {
     });
 }
 
+let currentlyFilteredBreaks = [];
+
 // Filter Break Explorer Table
 function filterBreaksTable() {
     const searchVal = document.getElementById("search-breaks").value.toLowerCase();
@@ -267,7 +269,7 @@ function filterBreaksTable() {
     const typeVal = document.getElementById("filter-break-type").value;
     const resVal = document.getElementById("filter-resolution") ? document.getElementById("filter-resolution").value : "ALL";
 
-    const filtered = allBreaksData.filter(b => {
+    currentlyFilteredBreaks = allBreaksData.filter(b => {
         const matchesSearch = (b.Trade_ID || '').toLowerCase().includes(searchVal) ||
                               (b.Trader || '').toLowerCase().includes(searchVal) ||
                               (b.Counterparty || '').toLowerCase().includes(searchVal) ||
@@ -280,7 +282,47 @@ function filterBreaksTable() {
         return matchesSearch && matchesSev && matchesType && matchesRes;
     });
 
-    populateBreaksTable(filtered);
+    populateBreaksTable(currentlyFilteredBreaks);
+}
+
+// Export Filtered Breaks Datatable as CSV
+function exportFilteredBreaksCSV() {
+    const dataToExport = currentlyFilteredBreaks.length > 0 ? currentlyFilteredBreaks : allBreaksData;
+    if (!dataToExport || dataToExport.length === 0) {
+        showToast("No break records available to export.", "⚠️");
+        return;
+    }
+
+    const headers = ["ID", "Run_ID", "Trade_ID", "Break_Type", "Severity", "Field_Name", "Expected_Value", "Actual_Value", "Trader", "Desk", "Portfolio", "Counterparty", "Asset_Class", "Resolution_Status", "Resolution_Reason"];
+    
+    let csvContent = headers.join(",") + "\n";
+
+    dataToExport.forEach(row => {
+        const values = headers.map(h => {
+            let val = row[h] !== undefined && row[h] !== null ? String(row[h]) : "";
+            val = val.replace(/"/g, '""');
+            if (val.includes(",") || val.includes("\n") || val.includes('"')) {
+                val = `"${val}"`;
+            }
+            return val;
+        });
+        csvContent += values.join(",") + "\n";
+    });
+
+    const timestamp = new Date().toISOString().replace(/[-:T.]/g, "").slice(0, 14);
+    const filename = `TradeGuard_Filtered_Breaks_${timestamp}.csv`;
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showToast(`Successfully exported ${dataToExport.length} filtered break records to CSV!`, "📥");
 }
 
 // Resolution Modal Event Handlers
