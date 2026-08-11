@@ -15,11 +15,12 @@ from flask import Flask, jsonify, request, send_from_directory
 from config import (
     CSV_REPORTS_DIR, DEFAULT_BREAK_RATE, DEFAULT_DB_PATH, DEFAULT_NUM_TRADES,
     DEFAULT_RECONCILE_THRESHOLD, EXCEL_REPORTS_DIR, JSON_REPORTS_DIR,
-    POWERBI_REPORTS_DIR, PROJECT_ROOT, REPORTS_DIR,
+    PDF_REPORTS_DIR, POWERBI_REPORTS_DIR, PROJECT_ROOT, REPORTS_DIR,
 )
 from src.database.database_manager import DatabaseManager
 from src.data_generator import DataGenerator
 from src.reconciliation.reconciliation_engine import ReconciliationEngine
+from src.reporting.pdf_generator import PDFReportGenerator
 from src.reporting.powerbi_exporter import PowerBIExporter
 from src.reporting.report_generator import ReportGenerator
 from src.utils.helpers import ensure_project_directories
@@ -383,13 +384,39 @@ def export_powerbi_api():
         db.disconnect()
 
 
+@app.route("/api/reports/pdf", methods=["POST"])
+def generate_pdf_report_api():
+    """Triggers standalone 1-Page Executive PDF Brief generation."""
+    db = get_db()
+    try:
+        reporter = ReportGenerator(db_manager=db)
+        summary_dict, breaks_df = reporter.read_reconciliation_data()
+        breaks_list = breaks_df.to_dict(orient="records") if not breaks_df.empty else []
+
+        pdf_gen = PDFReportGenerator(output_dir=PDF_REPORTS_DIR)
+        pdf_path = pdf_gen.generate(summary_dict, breaks_list)
+
+        return jsonify({
+            "status": "success",
+            "message": f"Successfully generated Executive PDF Brief: {pdf_path.name}",
+            "filename": pdf_path.name,
+            "category": "pdf"
+        })
+    except Exception as e:
+        logger.error(f"Error generating PDF report: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        db.disconnect()
+
+
 @app.route("/api/reports/list", methods=["GET"])
 def list_reports():
-    """Lists available Excel, CSV, JSON, and Power BI report files ready for download."""
+    """Lists available Excel, CSV, JSON, Power BI, and PDF report files ready for download."""
     try:
         files = []
         for cat_name, cat_dir in [("excel", EXCEL_REPORTS_DIR), ("csv", CSV_REPORTS_DIR),
-                                 ("json", JSON_REPORTS_DIR), ("powerbi", POWERBI_REPORTS_DIR)]:
+                                  ("json", JSON_REPORTS_DIR), ("powerbi", POWERBI_REPORTS_DIR),
+                                  ("pdf", PDF_REPORTS_DIR)]:
             if cat_dir.exists():
                 for p in cat_dir.glob("*"):
                     if p.is_file():
@@ -413,6 +440,7 @@ def download_report(category: str, filename: str):
         "csv": CSV_REPORTS_DIR,
         "json": JSON_REPORTS_DIR,
         "powerbi": POWERBI_REPORTS_DIR,
+        "pdf": PDF_REPORTS_DIR,
     }
     target_dir = category_map.get(category.lower())
     if not target_dir or not target_dir.exists():

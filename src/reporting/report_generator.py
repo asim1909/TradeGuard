@@ -15,8 +15,9 @@ import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
-from config import CSV_REPORTS_DIR, EXCEL_REPORTS_DIR, JSON_REPORTS_DIR, REPORTS_DIR
+from config import CSV_REPORTS_DIR, EXCEL_REPORTS_DIR, JSON_REPORTS_DIR, PDF_REPORTS_DIR, REPORTS_DIR
 from src.database.database_manager import DatabaseManager
+from src.reporting.pdf_generator import PDFReportGenerator
 from src.utils.exceptions import DatabaseConnectionError, ReportGenerationError
 from src.utils.logger import get_logger
 
@@ -310,6 +311,11 @@ class ReportGenerator:
         csv_paths = self.generate_csv_reports(summary_dict, breaks_df)
         json_paths = self.generate_json_reports(summary_dict, breaks_df)
 
+        # Generate Executive PDF Brief
+        breaks_list = breaks_df.to_dict(orient="records") if not breaks_df.empty else []
+        pdf_gen = PDFReportGenerator(output_dir=self.reports_dir / "pdf")
+        pdf_path = pdf_gen.generate(summary_dict, breaks_list)
+
         elapsed = round(time.perf_counter() - start_time, 4)
         logger.info(f"Report generation workflow completed in {elapsed} seconds.")
 
@@ -317,6 +323,7 @@ class ReportGenerator:
             "excel": excel_path,
             "csv": csv_paths,
             "json": json_paths,
+            "pdf": pdf_path,
             "reports_dir": self.reports_dir,
             "elapsed_time": elapsed,
         }

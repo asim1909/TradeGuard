@@ -72,10 +72,10 @@ def ensure_project_directories() -> None:
     """Ensures all essential project directory structures exist on disk."""
     from config import (
         ASSETS_DIR, CHARTS_DIR, CSV_REPORTS_DIR, DATABASE_DIR, DOCS_DIR,
-        EXCEL_REPORTS_DIR, JSON_REPORTS_DIR, LOGS_DIR, POWERBI_REPORTS_DIR, RAW_DATA_DIR,
+        EXCEL_REPORTS_DIR, JSON_REPORTS_DIR, LOGS_DIR, PDF_REPORTS_DIR, POWERBI_REPORTS_DIR, RAW_DATA_DIR,
     )
     for folder in [RAW_DATA_DIR, DATABASE_DIR, EXCEL_REPORTS_DIR, CSV_REPORTS_DIR,
-                   JSON_REPORTS_DIR, CHARTS_DIR, POWERBI_REPORTS_DIR, LOGS_DIR, DOCS_DIR, ASSETS_DIR]:
+                   JSON_REPORTS_DIR, CHARTS_DIR, POWERBI_REPORTS_DIR, PDF_REPORTS_DIR, LOGS_DIR, DOCS_DIR, ASSETS_DIR]:
         folder.mkdir(parents=True, exist_ok=True)
 
 

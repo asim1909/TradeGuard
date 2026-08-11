@@ -412,7 +412,7 @@ function populateReportsCards(reports) {
     }
 
     reports.forEach(r => {
-        const iconMap = { excel: "📊", csv: "📄", json: "📦", powerbi: "📈" };
+        const iconMap = { excel: "📊", csv: "📄", json: "📦", powerbi: "📈", pdf: "📕" };
         const card = document.createElement("div");
         card.className = "report-card";
         card.innerHTML = `
@@ -430,6 +430,16 @@ function populateReportsCards(reports) {
 }
 
 // Action Handlers
+async function triggerGeneratePDF() {
+    showToast("Generating 1-Page Executive PDF Brief...", "📄");
+    try {
+        const res = await fetch("/api/reports/pdf", { method: "POST" }).then(r => r.json());
+        showToast(res.message, "✅");
+        fetchDashboardData();
+    } catch (err) {
+        showToast("PDF generation failed: " + err.message, "❌");
+    }
+}
 async function triggerGenerateData() {
     const countInput = document.getElementById("cfg-count");
     const breakRateInput = document.getElementById("cfg-break-rate");

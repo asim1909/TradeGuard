@@ -40,6 +40,7 @@ CSV_REPORTS_DIR: Path = REPORTS_DIR / "csv"
 JSON_REPORTS_DIR: Path = REPORTS_DIR / "json"
 CHARTS_DIR: Path = REPORTS_DIR / "charts"
 POWERBI_REPORTS_DIR: Path = REPORTS_DIR / "powerbi"
+PDF_REPORTS_DIR: Path = REPORTS_DIR / "pdf"
 
 # Logs directory structure
 LOGS_DIR: Path = PROJECT_ROOT / "logs"
